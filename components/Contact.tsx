@@ -2,19 +2,34 @@
 import { FormEvent, useState } from "react";
 
 export default function Contact() {
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
 
     const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setIsSubmitting(true);
+        setStatus("submitting");
 
-        // We will hook this up to /api/contact/route.ts in Step 5
         const formData = new FormData(e.currentTarget);
         const data = Object.fromEntries(formData);
 
-        console.log("Form data to send:", data);
-        alert("Form setup complete! API integration coming in Step 5.");
-        setIsSubmitting(false);
+        try {
+            const response = await fetch("/api/contact", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to submit form");
+            }
+
+            setStatus("success");
+            (e.target as HTMLFormElement).reset(); // Clear the form
+        } catch (error) {
+            console.error(error);
+            setStatus("error");
+        }
     };
 
     return (
@@ -24,31 +39,51 @@ export default function Contact() {
                     <p className="eyebrow">Get started</p>
                     <h2 style={{ marginTop: 16, fontSize: "clamp(1.95rem,3.6vw,2.85rem)" }}>Ready to build your team?</h2>
                     <p style={{ marginTop: 16, color: "var(--muted-dark)", fontSize: "1.05rem", maxWidth: "44ch" }}>
-                        Tell us your market and where you're stuck. We'll match you with the right people and get your pipeline moving.
+                        Tell us your market and where you&apos;re stuck. We&apos;ll match you with the right people and get your pipeline moving.
                     </p>
-                    <form className="lead-form" id="leadForm" onSubmit={handleSubmit}>
-                        <div className="form-row">
-                            <div className="field">
-                                <label htmlFor="name">Your name *</label>
-                                <input id="name" name="name" type="text" required placeholder="Jane Investor" />
+
+                    {status === "success" ? (
+                        <div style={{ marginTop: 34, padding: 24, background: "rgba(24,160,106,.1)", border: "1px solid var(--emerald)", borderRadius: 12, color: "var(--ink)" }}>
+                            <h3 style={{ fontSize: "1.2rem", color: "var(--emerald)" }}>Message Sent!</h3>
+                            <p style={{ marginTop: 8 }}>Thank you for reaching out. We&apos;ll be in touch shortly to discuss building your team.</p>
+                            <button
+                                onClick={() => setStatus("idle")}
+                                className="btn btn-ghost on-light"
+                                style={{ marginTop: 16 }}
+                            >
+                                Send another message
+                            </button>
+                        </div>
+                    ) : (
+                        <form className="lead-form" id="leadForm" onSubmit={handleSubmit}>
+                            <div className="form-row">
+                                <div className="field">
+                                    <label htmlFor="name">Your name *</label>
+                                    <input id="name" name="name" type="text" required placeholder="Jane Investor" disabled={status === "submitting"} />
+                                </div>
+                                <div className="field">
+                                    <label htmlFor="phone">Phone *</label>
+                                    <input id="phone" name="phone" type="tel" required placeholder="(555) 000-0000" disabled={status === "submitting"} />
+                                </div>
                             </div>
                             <div className="field">
-                                <label htmlFor="phone">Phone *</label>
-                                <input id="phone" name="phone" type="tel" required placeholder="(555) 000-0000" />
+                                <label htmlFor="email">Email</label>
+                                <input id="email" name="email" type="email" placeholder="you@company.com" disabled={status === "submitting"} />
                             </div>
-                        </div>
-                        <div className="field">
-                            <label htmlFor="email">Email</label>
-                            <input id="email" name="email" type="email" placeholder="you@company.com" />
-                        </div>
-                        <div className="field">
-                            <label htmlFor="message">What do you need?</label>
-                            <textarea id="message" name="message" placeholder="I wholesale in the Atlanta metro and need cold callers plus an acquisitions manager..."></textarea>
-                        </div>
-                        <button className="btn btn-primary btn-arrow" type="submit" disabled={isSubmitting} style={{ justifyContent: "center" }}>
-                            {isSubmitting ? "Sending..." : "Send message"}
-                        </button>
-                    </form>
+                            <div className="field">
+                                <label htmlFor="message">What do you need?</label>
+                                <textarea id="message" name="message" placeholder="I wholesale in the Atlanta metro and need cold callers plus an acquisitions manager..." disabled={status === "submitting"}></textarea>
+                            </div>
+
+                            {status === "error" && (
+                                <p style={{ color: "#d93025", fontSize: "0.9rem" }}>Oops! Something went wrong. Please try again or email us directly.</p>
+                            )}
+
+                            <button className="btn btn-primary btn-arrow" type="submit" disabled={status === "submitting"} style={{ justifyContent: "center" }}>
+                                {status === "submitting" ? "Sending..." : "Send message"}
+                            </button>
+                        </form>
+                    )}
                 </div>
 
                 <aside className="contact-side reveal">
